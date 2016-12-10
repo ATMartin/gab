@@ -24,6 +24,14 @@ type slackRtmSelf struct {
 type slackRtmEvent struct {
   Type string
   Text string
+  Channel string
+}
+
+type slackRtmResponse struct {
+  Id int         `json:"id"`
+  Type string    `json:"type"`
+  Channel string `json:"channel"`
+  Text string    `json:"text"`
 }
 
 // *** METHODS **
@@ -57,13 +65,8 @@ func slackInit(apiToken string) (conn *websocket.Conn, botId string, err error) 
   return
 }
 
-func slackGetMessage(messageSource []byte) (message string, err error) {
-  message = ""
-  var event slackRtmEvent
-  err = json.Unmarshal(messageSource, &event)
+func slackGetMessage(messageSource []byte) (message slackRtmEvent, err error) {
+  err = json.Unmarshal(messageSource, &message)
   if err != nil { return }
-  if event.Type == "message" {
-    message = event.Text
-  }
   return
 }

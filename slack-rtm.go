@@ -2,6 +2,7 @@ package main
 
 import (
   // Native packages
+  "bytes"
   "encoding/json"
   "fmt"
   "io/ioutil"
@@ -9,7 +10,11 @@ import (
 
   // External packages
   "github.com/gorilla/websocket"
+  "github.com/fatih/structs"
 )
+
+// ** GLOBALS **
+var slackApiToken string
 
 // *** STRUCTS ***
 type slackRtmStart struct {
@@ -27,11 +32,24 @@ type slackRtmEvent struct {
   Channel string
 }
 
+type slackRtmAttachment struct {
+  Color string  `json:"color"`
+  Title string  `json:"title"`
+  Text string   `json:"text"`
+}
+
 type slackRtmResponse struct {
-  Id int         `json:"id"`
-  Type string    `json:"type"`
-  Channel string `json:"channel"`
-  Text string    `json:"text"`
+  Id int                           `json:"id"`
+  Type string                      `json:"type"`
+  Channel string                   `json:"channel"`
+  Text string                      `json:"text"`
+  Attachments []slackRtmAttachment `json:"attachments"`
+}
+
+type  slackApiResponse struct {
+  Channel string                   `json:"channel"`
+  Text string                      `json:"text"`
+  Attachments []slackRtmAttachment `json:"attachments"`
 }
 
 // *** METHODS **
@@ -47,6 +65,9 @@ func slackGetWebsocket(apiToken string) (socketAddress, botId string, err error)
   var websocketData slackRtmStart
   err = json.Unmarshal(body, &websocketData)
 
+  // We've gotten good data back - stash our API token
+  // for future requests that use it!
+  slackApiToken = apiToken
   socketAddress = websocketData.Url
   botId = websocketData.Self.Id
   return
@@ -67,6 +88,20 @@ func slackInit(apiToken string) (conn *websocket.Conn, botId string, err error) 
 
 func slackGetMessage(messageSource []byte) (message slackRtmEvent, err error) {
   err = json.Unmarshal(messageSource, &message)
-  if err != nil { return }
+  return
+}
+
+func slackPostMessage(channel string, content map[string]interface{}) (err error) {
+  endpoint := fmt.Sprintf("https://slack.com/api/chat.postMessage?token=%s", slackApiToken)
+  fmt.Println(string(content))
+  resp, err := http.PostForm(endpoint, bytes.NewBuffer(content))
+  if err != nil {
+    fmt.Println("Error posting message to Slack!")
+    return
+  }
+
+  body, err := ioutil.ReadAll(resp.Body)
+  fmt.Println(string(body))
+
   return
 }
